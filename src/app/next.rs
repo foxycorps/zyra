@@ -8,38 +8,46 @@ pub fn next() -> Result<()> {
         return Err(errors::GitError::NotGitRepository.into());
     }
 
-    // Getting the current state
-    let state = data::SolMetadata::load()?;
+    let mut state = data::SolMetadata::load()?;
 
-    // Getting the current stack
-    let current_stack = state.get_current_stack()?;
+    // If we're in a detached HEAD state, handle that case
+    if state.is_in_detached_head() {
+        let context = state.get_detached_head_context().unwrap();
+        let stack = state.get_stack(&context.stack_name)?;
+        let current_idx = stack.branches.iter().position(|b| b.name == context.branch_name)
+            .ok_or_else(|| anyhow::anyhow!("Could not find branch '{}' in stack", context.branch_name))?;
 
-    // Get the current branch
-    let current_branch = git::branch::get_branch_name()?;
-
-    // Check to make sure that the branch is in the stack
-    if !current_stack.has_branch(&current_branch) {
-        return Err(errors::AppError::BranchNotPartOfStack.into());
-    }
-
-    let children = current_stack.get_children(&current_branch)?;
-
-    match children.len() {
-        0 => Err(errors::AppError::NoNextBranch.into()),
-        1 => {
-            // We will just switch to that branch
-            git::branch::switch(&children[0].name, false)?;
-            println!("Switched to branch '{}'", children[0].name.blue());
-            Ok(())
-        },
-        _ => {
-            // We assume there is more than one child branch,
-            // so we will ask which branch to switch to.
-            let branch_names: Vec<_> = children.iter().map(|branch| branch.name.clone()).collect();
-            let selection = inquire::Select::new("Select branch to switch to", branch_names).prompt()?;
-            git::branch::switch(&selection, false)?;
-            println!("Switched to branch '{}'", selection.blue());
-            Ok(())
+        if current_idx == stack.branches.len() - 1 {
+            return Err(anyhow::anyhow!("Already at the last branch in the stack"));
         }
+
+        let next_branch_name = stack.branches[current_idx + 1].name.clone();
+        
+        // Switch to the branch first
+        git::branch::switch(&next_branch_name, false)?;
+        
+        // Then update state
+        state.clear_detached_head_context();
+        state.save()?;
+        
+        println!("Switched to branch '{}'", next_branch_name.blue());
+        return Ok(());
     }
+
+    // Normal branch navigation
+    let current_stack = state.get_current_stack()?;
+    let current_branch = git::branch::get_current_branch()?;
+    
+    let current_idx = current_stack.branches.iter().position(|b| b.name == current_branch)
+        .ok_or_else(|| anyhow::anyhow!("Could not find branch '{}' in stack", current_branch))?;
+
+    if current_idx == current_stack.branches.len() - 1 {
+        return Err(anyhow::anyhow!("Already at the last branch in the stack"));
+    }
+
+    let next_branch = &current_stack.branches[current_idx + 1];
+    git::branch::switch(&next_branch.name, false)?;
+    println!("Switched to branch '{}'", next_branch.name.blue());
+    
+    Ok(())
 }

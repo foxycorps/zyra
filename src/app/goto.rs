@@ -4,12 +4,11 @@ use colored::Colorize;
 use crate::{data, errors, git};
 
 pub fn goto(name: &str) -> Result<()> {
-
     if !git::repo::is_repo()? {
         return Err(errors::GitError::NotGitRepository.into());
     }
 
-    let state = data::SolMetadata::load()?;
+    let mut state = data::SolMetadata::load()?;
 
     // Stack check
     if state.has_stack(name) {
@@ -24,7 +23,7 @@ pub fn goto(name: &str) -> Result<()> {
     let current_stack = state.get_current_stack()?;
 
     // Branch check
-    if state.has_branch(name) && current_stack.has_branch(name){
+    if state.has_branch(name) && current_stack.has_branch(name) {
         // We will switch to this branch
         git::branch::switch(name, false)?;
         println!("Switched to branch '{}'", name.blue());
@@ -33,11 +32,19 @@ pub fn goto(name: &str) -> Result<()> {
 
     // Commit check -- Must be within this current branch
     if git::commit::is_commit(name) {
-        // We will switch to this commit
+        // Store current branch and stack context
+        let current_branch = git::branch::get_current_branch()?;
+        
+        // Switch to the commit
         git::branch::switch_to_commit(name)?;
-        println!("Switched to commit '{}'", name.blue());
+        
+        // Update state to track that we're in a commit within the current stack/branch
+        state.set_detached_head_context(current_stack.name.clone(), current_branch)?;
+        state.save()?;
+        
+        println!("Switched to commit '{}' (stack context preserved)", name.blue());
         return Ok(());
     }
 
-    Ok(())
+    Err(anyhow::anyhow!("Could not find stack, branch, or commit '{}'", name))
 }
