@@ -9,6 +9,10 @@ pub fn get_branch_name() -> Result<String> {
         .arg("HEAD")
         .output()?;
 
+    if !output.status.success() {
+        return Err(anyhow!("{}", String::from_utf8(output.stderr)?));
+    }
+
     Ok(String::from_utf8(output.stdout)?.trim().to_string())
 }
 
@@ -46,30 +50,58 @@ pub fn set_upstream(name: &str) -> Result<()> {
 
 /// Gets the list of branches known to git.
 pub fn get_branches(local_only: bool) -> Result<Vec<String>> {
-    let repo = git2::Repository::discover(".")?;
-    let mut branch_names = Vec::new();
+    let mut cmd = Command::new("git");
+    cmd.arg("branch");
 
-    // Always collect local branches
-    let branches = repo.branches(Some(git2::BranchType::Local))?;
-    for branch_result in branches {
-        let (branch, _) = branch_result?;
-        if let Some(name) = branch.name()? {
-            branch_names.push(name.to_string());
-        }
-    }
-
-    // Collect remote branches if not local_only
     if !local_only {
-        let remote_branches = repo.branches(Some(git2::BranchType::Remote))?;
-        for branch_result in remote_branches {
-            let (branch, _) = branch_result?;
-            if let Some(name) = branch.name()? {
-                branch_names.push(name.to_string());
-            }
-        }
+        cmd.arg("-a"); // Show all branches including remotes
     }
 
-    Ok(branch_names)
+    cmd.arg("--format=%(refname:short)"); // Get clean branch names
+
+    let output = cmd.output()?;
+
+    if !output.status.success() {
+        return Err(anyhow!("{}", String::from_utf8(output.stderr)?));
+    }
+
+    let branches = String::from_utf8(output.stdout)?
+        .lines()
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty())
+        .collect();
+
+    Ok(branches)
+}
+
+/// Switches to the commit specified by the hash.
+pub fn switch_to_commit(commit_hash: &str) -> Result<()> {
+    let output = Command::new("git")
+        .arg("checkout")
+        .arg(commit_hash)
+        .output()?;
+
+    if !output.status.success() {
+        return Err(anyhow!("{}", String::from_utf8(output.stderr)?));
+    }
+
+    Ok(())
+}
+
+/// Get the current branch name
+pub fn get_current_branch() -> Result<String> {
+    get_branch_name()
+}
+
+/// Check if a commit hash exists
+pub fn commit_exists(commit_hash: &str) -> Result<bool> {
+    let output = Command::new("git")
+        .arg("rev-parse")
+        .arg("--verify")
+        .arg(format!("{}^{{commit}}", commit_hash))
+        .output()?;
+
+    Ok(output.status.success())
 }
 
 #[cfg(test)]
@@ -78,29 +110,15 @@ mod tests {
 
     #[test]
     fn test_get_branches() {
-        // This test will only run in the context of a git repository
         let result = get_branches(true);
         match result {
             Ok(branches) => {
                 println!("Local branches: {:?}", branches);
-                assert!(
-                    !branches.is_empty(),
-                    "Should have at least one local branch"
-                );
+                assert!(!branches.is_empty(), "Should have at least one local branch");
             }
             Err(e) => {
                 println!("Error getting branches: {}", e);
-                // Not failing the test since it might be running outside a git repo
             }
         }
     }
-}
-
-/// Switches to the commit specified by the hash.
-pub fn switch_to_commit(commit_hash: &str) -> Result<()> {
-    Command::new("git")
-        .arg("checkout")
-        .arg(commit_hash)
-        .output()?;
-    Ok(())
 }
