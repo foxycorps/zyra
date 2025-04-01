@@ -1,5 +1,6 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use anyhow::Result;
 
 // Exporting the other parts of the data system.
 pub mod display;
@@ -9,10 +10,10 @@ pub mod storage;
 /// Represents a complete stack
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct Stack {
-    name: String,                 // e.g. "feature-stack"
+    pub name: String,                 // e.g. "feature-stack"
     base_branch: String,          // e.g. "main"
     pub head_branch: StackBranch, // The first branch in the stack
-    branches: Vec<StackBranch>,   // Ordered list of branches in th stack
+    pub branches: Vec<StackBranch>,   // Ordered list of branches in th stack
     created_at: DateTime<Utc>,    // Timestamp for creation
     updated_at: DateTime<Utc>,    // Last update timestamp
 }
@@ -43,6 +44,36 @@ pub enum BranchStatus {
 /// Global storage structure to handle multiple stacks.
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct SolMetadata {
-    stacks: Vec<Stack>,
-    version: String, // For future migration compatibility
+    pub stacks: Vec<Stack>,
+    pub version: String, // For future migration compatibility
+    #[serde(default)]
+    pub detached_head_context: Option<DetachedHeadContext>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct DetachedHeadContext {
+    pub stack_name: String,
+    pub branch_name: String,
+}
+
+impl SolMetadata {
+    pub fn set_detached_head_context(&mut self, stack_name: String, branch_name: String) -> Result<()> {
+        self.detached_head_context = Some(DetachedHeadContext {
+            stack_name,
+            branch_name,
+        });
+        Ok(())
+    }
+
+    pub fn clear_detached_head_context(&mut self) {
+        self.detached_head_context = None;
+    }
+
+    pub fn get_detached_head_context(&self) -> Option<&DetachedHeadContext> {
+        self.detached_head_context.as_ref()
+    }
+
+    pub fn is_in_detached_head(&self) -> bool {
+        self.detached_head_context.is_some()
+    }
 }
