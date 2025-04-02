@@ -16,10 +16,14 @@ pub struct Log {
     /// Show the stack in json format
     #[clap(short, long, default_value_t = false)]
     pub json: bool,
+
+    /// Pretty print the json output (only works with --json)
+    #[clap(long, default_value_t = false, requires = "json")]
+    pub pretty: bool,
 }
 
 impl Run for Log {
     async fn run(&self) -> Result<()> {
-        log(self.graph, self.verbose, self.json)
+        log(self.graph, self.verbose, self.json, self.pretty)
     }
 }

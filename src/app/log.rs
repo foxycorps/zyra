@@ -1,7 +1,7 @@
 use crate::{data, errors, git};
 use anyhow::Result;
 
-pub fn log(graph: bool, verbose: bool, json: bool) -> Result<()> {
+pub fn log(graph: bool, verbose: bool, json: bool, pretty: bool) -> Result<()> {
     if !git::repo::is_repo()? {
         return Err(errors::git::GitError::NotGitRepository.into());
     }
@@ -10,7 +10,7 @@ pub fn log(graph: bool, verbose: bool, json: bool) -> Result<()> {
     let current_stack = state.get_current_stack()?;
 
     if json {
-        println!("{}", current_stack.json());
+        println!("{}", current_stack.json(pretty));
         return Ok(());
     }
 

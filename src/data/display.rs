@@ -170,7 +170,7 @@ impl Stack {
     }
 
     /// json representation of the stack.
-    pub fn json(&self) -> String {
+    pub fn json(&self, pretty: bool) -> String {
         // We will actually create a dedicated struct for this... and use serde to serialize it.
         let mut branches = Vec::new();
         for branch in self.branches.iter() {
@@ -191,7 +191,11 @@ impl Stack {
             branches,
         };
 
-        serde_json::to_string_pretty(&stack).unwrap()
+        if pretty {
+            serde_json::to_string_pretty(&stack).unwrap()
+        } else {
+            serde_json::to_string(&stack).unwrap()
+        }
     }
 
     /// displays a simple representation of the stack.
