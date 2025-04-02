@@ -14,6 +14,6 @@ pub fn log(graph: bool, verbose: bool, json: bool) -> Result<()> {
         return Ok(());
     }
 
-    println!("{}", current_stack.display());
+    println!("{}", current_stack.display(graph));
     Ok(())
 }

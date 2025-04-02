@@ -6,7 +6,8 @@ use super::*;
 impl Stack {
     pub fn new(name: String, base_branch: String) -> Self {
         // We will first create a new branch for the stack.
-        let branch = StackBranch::new(name.clone(), base_branch.clone());
+        let mut branch = StackBranch::new(name.clone(), base_branch.clone());
+        branch.depth = 0; // Explicitly set depth to 0 for root branch
         Stack {
             name,
             base_branch,
@@ -59,6 +60,23 @@ impl Stack {
     /// Checking if a branch exists.
     pub fn has_branch(&self, name: &str) -> bool {
         self.branches.iter().any(|branch| branch.name == name)
+    }
+
+    /// Calculate the depth of a branch by traversing its parent chain
+    pub fn calculate_branch_depth(&self, branch_name: &str) -> u8 {
+        let mut depth = 0;
+        let mut current_name = branch_name;
+
+        while let Some(branch) = self.branches.iter().find(|b| b.name == current_name) {
+            if let Some(parent_name) = &branch.parent {
+                depth += 1;
+                current_name = parent_name;
+            } else {
+                break;
+            }
+        }
+
+        depth
     }
 }
 
