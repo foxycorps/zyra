@@ -18,7 +18,7 @@ pub struct Log {
     pub json: bool,
 
     /// Pretty print the json output (only works with --json)
-    #[clap(long, default_value_t = false, requires = "json")]
+    #[clap(short, long, default_value_t = false, requires = "json")]
     pub pretty: bool,
 }
 

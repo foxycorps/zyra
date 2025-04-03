@@ -25,4 +25,8 @@ pub enum Cmd {
     /// Navigate to a branch, stack, or commit
     #[clap(alias = "g")]
     Goto(crate::cli::goto::Goto),
+
+    /// Restack the entire stack
+    #[clap(alias = "r")]
+    Restack(crate::cli::restack::Restack),
 }
