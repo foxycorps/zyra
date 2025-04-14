@@ -13,8 +13,18 @@ pub fn goto(name: &str) -> Result<()> {
     // Stack check
     if state.has_stack(name) {
         // We will get its root branch
-        let stack = state.get_stack(name)?;
-        git::branch::switch(&stack.head_branch.name, false)?;
+        let head_branch_name = {
+            let stack = state.get_stack(name)?;
+            stack.head_branch.name.clone()
+        };
+        
+        git::branch::switch(&head_branch_name, false)?;
+        
+        // Update the commit hash after switching
+        let current_commit = git::commit::get_hash()?;
+        state.update_branch_commit_hash(&head_branch_name, &current_commit)?;
+        state.save()?;
+        
         println!("Switched to stack '{}'", name.blue());
         return Ok(());
     }
@@ -26,6 +36,12 @@ pub fn goto(name: &str) -> Result<()> {
     if state.has_branch(name) && current_stack.has_branch(name) {
         // We will switch to this branch
         git::branch::switch(name, false)?;
+        
+        // Update the commit hash after switching
+        let current_commit = git::commit::get_hash()?;
+        state.update_branch_commit_hash(name, &current_commit)?;
+        state.save()?;
+        
         println!("Switched to branch '{}'", name.blue());
         return Ok(());
     }

@@ -14,13 +14,21 @@ pub fn init(name: String, base: Option<String>, verbose: bool) -> Result<()> {
         return Err(anyhow!("Branch already exists."));
     }
 
+    // Get the current branch the user is on
+    let current_branch = git::branch::get_branch_name()?;
+
     // Need to check if the base branch actually exists in git.
     let list = git::branch::get_branches(true)?;
     if !list.contains(&base.clone().unwrap_or("main".to_string())) {
         return Err(anyhow!("Base branch does not exist."));
     }
 
-    let stack = Stack::new(name.clone(), base.unwrap_or("main".to_string()));
+    // Create a new stack with the specified base branch
+    let mut stack = Stack::new(name.clone(), base.unwrap_or("main".to_string()));
+    
+    // Set the parent of the head_branch to the branch the user was on
+    stack.head_branch.set_parent(&current_branch);
+    
     metadata.add_stack(&stack)?;
     metadata.save()?;
 
@@ -29,9 +37,10 @@ pub fn init(name: String, base: Option<String>, verbose: bool) -> Result<()> {
 
     if verbose {
         println!(
-            "[sol] Initialized new '{}' from base branch '{}'.",
+            "[sol] Initialized new '{}' from base branch '{}'. Parent branch: '{}'.",
             name.clone(),
-            "main"
+            "main",
+            current_branch
         );
     }
     println!("Created branch: {}", stack.head_branch.name);

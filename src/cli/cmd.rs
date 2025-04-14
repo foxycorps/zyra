@@ -29,4 +29,8 @@ pub enum Cmd {
     /// Restack the entire stack
     #[clap(alias = "r")]
     Restack(crate::cli::restack::Restack),
+
+    /// Submit the stack to remote.
+    #[clap(alias = "s")]
+    Submit(crate::cli::submit::Submit),
 }

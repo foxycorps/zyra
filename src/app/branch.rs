@@ -43,15 +43,10 @@ pub fn branch(name: String, from: Option<String>, verbose: bool) -> Result<()> {
 
     // Creating the branch.
     let mut branch = data::StackBranch::new(name.clone(), commit_hash);
-    branch.set_parent(current_branch.clone());
+    branch.set_parent(&current_branch);
 
     // Add the branch to the current stack
     let current_stack_mut = state.get_current_stack_mut()?;
-    
-    // Calculate and set the depth based on parent chain
-    let depth = current_stack_mut.calculate_branch_depth(&name);
-    branch.depth = depth;
-    
     current_stack_mut.add_branch(branch)?;
 
     // Store the stack display before saving

@@ -1,6 +1,6 @@
+use anyhow::Result;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use anyhow::Result;
 
 // Exporting the other parts of the data system.
 pub mod display;
@@ -10,12 +10,12 @@ pub mod storage;
 /// Represents a complete stack
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct Stack {
-    pub name: String,                 // e.g. "feature-stack"
-    base_branch: String,          // e.g. "main"
-    pub head_branch: StackBranch, // The first branch in the stack
-    pub branches: Vec<StackBranch>,   // Ordered list of branches in th stack
-    created_at: DateTime<Utc>,    // Timestamp for creation
-    updated_at: DateTime<Utc>,    // Last update timestamp
+    pub name: String,               // e.g. "feature-stack"
+    pub base_branch: String,        // e.g. "main"
+    pub head_branch: StackBranch,   // The first branch in the stack
+    pub branches: Vec<StackBranch>, // Ordered list of branches in th stack
+    created_at: DateTime<Utc>,      // Timestamp for creation
+    updated_at: DateTime<Utc>,      // Last update timestamp
 }
 
 /// Reprensents an individual branch in a stack.
@@ -23,12 +23,11 @@ pub struct Stack {
 pub struct StackBranch {
     pub name: String,         // e.g. "feature-1"
     commit_hash: String,      // Last commit on this branch
-    pr_id: Option<u32>,       // Optional PR ID from remote
+    pub pr_id: i64,           // PR ID from remote, -1 if not set
     pub status: BranchStatus, // Enum: { Pending, Merged, Conflict, Testing }
-    pub parent: Option<String>,   // Name of the parent branch, if any
+    pub parent: String,       // Name of the parent branch
     created_at: DateTime<Utc>,
     updated_at: DateTime<Utc>,
-    pub depth: u8,
 }
 
 /// Status of a branch within the stack.
@@ -57,7 +56,11 @@ pub struct DetachedHeadContext {
 }
 
 impl SolMetadata {
-    pub fn set_detached_head_context(&mut self, stack_name: String, branch_name: String) -> Result<()> {
+    pub fn set_detached_head_context(
+        &mut self,
+        stack_name: String,
+        branch_name: String,
+    ) -> Result<()> {
         self.detached_head_context = Some(DetachedHeadContext {
             stack_name,
             branch_name,

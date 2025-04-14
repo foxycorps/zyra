@@ -104,6 +104,77 @@ pub fn commit_exists(commit_hash: &str) -> Result<bool> {
     Ok(output.status.success())
 }
 
+/// Pushes the current branch to the remote.
+pub fn push(branch_name: &str) -> Result<()> {
+    let output = Command::new("git")
+        .arg("push")
+        .arg("origin")
+        .arg(branch_name)
+        .arg("--force-with-lease")
+        .output()?;
+
+    if !output.status.success() {
+        return Err(anyhow!("{}", String::from_utf8(output.stderr)?));
+    }
+
+    Ok(())
+}
+
+/// Pushes the current branch to the remote with force-with-lease option.
+/// This is safer than force push as it will fail if the remote branch has been updated.
+pub fn push_with_lease(branch_name: &str) -> Result<()> {
+    let output = Command::new("git")
+        .arg("push")
+        .arg("origin")
+        .arg(branch_name)
+        .arg("--force-with-lease")
+        .output()?;
+
+    if !output.status.success() {
+        return Err(anyhow!("{}", String::from_utf8(output.stderr)?));
+    }
+
+    Ok(())
+}
+
+/// Force pushes the current branch to the remote.
+/// WARNING: This will overwrite any changes on the remote branch.
+pub fn force_push(branch_name: &str) -> Result<()> {
+    let output = Command::new("git")
+        .arg("push")
+        .arg("origin")
+        .arg(branch_name)
+        .arg("--force")
+        .output()?;
+
+    if !output.status.success() {
+        return Err(anyhow!("{}", String::from_utf8(output.stderr)?));
+    }
+
+    Ok(())
+}
+
+/// Check if a branch exists
+pub fn exists(branch_name: &str) -> Result<bool> {
+    let branches = get_branches(false)?;
+    Ok(branches.contains(&branch_name.to_string()))
+}
+
+/// Pulls the branch from remote.
+pub fn pull(branch_name: &str) -> Result<()> {
+    let output = Command::new("git")
+        .arg("pull")
+        .arg("origin")
+        .arg(branch_name)
+        .output()?;
+
+    if !output.status.success() {
+        return Err(anyhow!("{}", String::from_utf8(output.stderr)?));
+    }
+
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -114,7 +185,10 @@ mod tests {
         match result {
             Ok(branches) => {
                 println!("Local branches: {:?}", branches);
-                assert!(!branches.is_empty(), "Should have at least one local branch");
+                assert!(
+                    !branches.is_empty(),
+                    "Should have at least one local branch"
+                );
             }
             Err(e) => {
                 println!("Error getting branches: {}", e);

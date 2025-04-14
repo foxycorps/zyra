@@ -32,9 +32,12 @@ pub fn restack(all: bool) -> Result<()> {
     for i in start_idx..total_branches {
         let branch = &stack.branches[i];
         let branch_name = branch.name.clone();
-        let parent = branch.parent.as_ref()
-            .ok_or_else(|| anyhow!("Branch {} has no parent", branch_name))?
-            .clone();
+        let parent = branch.parent.clone();
+        
+        // Skip branches with empty parent (root branches)
+        if parent.is_empty() {
+            continue;
+        }
         
         // Switch to the branch we want to rebase
         git::branch::switch(&branch_name, false)?;
@@ -55,7 +58,7 @@ pub fn restack(all: bool) -> Result<()> {
         
         // Update the commit hash in our metadata
         let new_commit = git::commit::get_hash()?;
-        stack.branches[i].set_commit_hash(new_commit);
+        stack.branches[i].set_commit_hash(&new_commit);
     }
     
     // Save the updated metadata
