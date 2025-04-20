@@ -6,8 +6,7 @@ use super::*;
 impl Stack {
     pub fn new(name: String, base_branch: String) -> Self {
         // We will first create a new branch for the stack.
-        let mut branch = StackBranch::new(name.clone(), base_branch.clone());
-        branch.depth = 0; // Explicitly set depth to 0 for root branch
+        let branch = StackBranch::new(name.clone(), base_branch.clone());
         Stack {
             name,
             base_branch,
@@ -27,9 +26,9 @@ impl Stack {
     /// Get a branch by name
     pub fn get_branch(&self, name: &str) -> Result<&StackBranch> {
         self.branches
-        .iter()
-        .find(|branch| branch.name == name)
-        .ok_or_else(|| anyhow!("Branch not found"))
+            .iter()
+            .find(|branch| branch.name == name)
+            .ok_or_else(|| anyhow!("Branch not found"))
     }
 
     /// Remove a branch from the stack
@@ -48,12 +47,12 @@ impl Stack {
         let mut children = self
             .branches
             .iter()
-            .filter(|branch| branch.parent == Some(branch_name.to_string()))
+            .filter(|branch| branch.parent == branch_name)
             .collect::<Vec<&StackBranch>>();
-        
+
         // Sort children by creation date
         children.sort_by(|a, b| a.created_at.cmp(&b.created_at));
-        
+
         Ok(children)
     }
 
@@ -62,21 +61,27 @@ impl Stack {
         self.branches.iter().any(|branch| branch.name == name)
     }
 
-    /// Calculate the depth of a branch by traversing its parent chain
-    pub fn calculate_branch_depth(&self, branch_name: &str) -> u8 {
-        let mut depth = 0;
-        let mut current_name = branch_name;
+    /// Update the commit hash for a branch in the stack
+    pub fn update_branch_commit_hash(
+        &mut self,
+        branch_name: &str,
+        commit_hash: &str,
+    ) -> Result<()> {
+        let branch = self
+            .branches
+            .iter_mut()
+            .find(|b| b.name == branch_name)
+            .ok_or_else(|| anyhow!("Branch '{}' not found in stack", branch_name))?;
 
-        while let Some(branch) = self.branches.iter().find(|b| b.name == current_name) {
-            if let Some(parent_name) = &branch.parent {
-                depth += 1;
-                current_name = parent_name;
-            } else {
-                break;
-            }
+        branch.set_commit_hash(commit_hash);
+        self.updated_at = Utc::now();
+
+        // If this is also the head branch, update it too
+        if self.head_branch.name == branch_name {
+            self.head_branch.set_commit_hash(commit_hash);
         }
 
-        depth
+        Ok(())
     }
 }
 
@@ -85,30 +90,31 @@ impl StackBranch {
         StackBranch {
             name,
             commit_hash,
-            pr_id: None,
+            pr_id: -1,
             status: BranchStatus::Pending,
-            parent: None,
+            parent: String::new(), // Initialize with empty string
             created_at: Utc::now(),
             updated_at: Utc::now(),
-            depth: 0,
         }
     }
 
     pub fn set_status(&mut self, status: BranchStatus) {
         self.status = status;
-    }
-
-    pub fn set_pr_id(&mut self, pr_id: u32) {
-        self.pr_id = Some(pr_id);
-    }
-
-    pub fn set_parent(&mut self, parent: String) {
-        self.parent = Some(parent);
-    }
-
-    pub fn set_commit_hash(&mut self, commit_hash: String) {
-        self.commit_hash = commit_hash;
         self.updated_at = Utc::now();
+    }
+
+    /// Set the commit hash for this branch
+    pub fn set_commit_hash(&mut self, commit_hash: &str) {
+        self.commit_hash = commit_hash.to_string();
+        self.updated_at = Utc::now();
+    }
+
+    pub fn set_pr_id(&mut self, pr_id: u64) {
+        self.pr_id = pr_id as i64;
+    }
+
+    pub fn set_parent(&mut self, parent: &str) {
+        self.parent = parent.to_string();
     }
 }
 
@@ -157,5 +163,62 @@ impl SolMetadata {
             .iter()
             .find(|stack| stack.name == name)
             .ok_or_else(|| anyhow!("Stack not found"))
+    }
+
+    /// Update the commit hash for a branch in the current stack
+    pub fn update_branch_commit_hash(
+        &mut self,
+        branch_name: &str,
+        commit_hash: &str,
+    ) -> Result<()> {
+        let current_stack = self.get_current_stack_mut()?;
+        current_stack.update_branch_commit_hash(branch_name, commit_hash)?;
+        Ok(())
+    }
+
+    /// Update the PR ID for a branch in the current stack
+    pub fn update_branch_pr_id(
+        &mut self,
+        branch_name: &str,
+        pr_id: u64,
+    ) -> Result<()> {
+        let current_stack = self.get_current_stack_mut()?;
+        
+        let branch = current_stack.branches.iter_mut()
+            .find(|b| b.name == branch_name)
+            .ok_or_else(|| anyhow!("Branch '{}' not found in stack", branch_name))?;
+        
+        branch.set_pr_id(pr_id);
+        current_stack.updated_at = Utc::now();
+        
+        // If this is also the head branch, update it too
+        if current_stack.head_branch.name == branch_name {
+            current_stack.head_branch.set_pr_id(pr_id);
+        }
+        
+        Ok(())
+    }
+    
+    /// Update the status for a branch in the current stack
+    pub fn update_branch_status(
+        &mut self,
+        branch_name: &str,
+        status: BranchStatus,
+    ) -> Result<()> {
+        let current_stack = self.get_current_stack_mut()?;
+        
+        let branch = current_stack.branches.iter_mut()
+            .find(|b| b.name == branch_name)
+            .ok_or_else(|| anyhow!("Branch '{}' not found in stack", branch_name))?;
+        
+        branch.set_status(status);
+        current_stack.updated_at = Utc::now();
+        
+        // If this is also the head branch, update it too
+        if current_stack.head_branch.name == branch_name {
+            current_stack.head_branch.set_status(status);
+        }
+        
+        Ok(())
     }
 }

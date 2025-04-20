@@ -7,7 +7,15 @@ pub fn log(graph: bool, verbose: bool, json: bool, pretty: bool) -> Result<()> {
     }
 
     let state = data::SolMetadata::load()?;
-    let current_stack = state.get_current_stack()?;
+    
+    // Try to get the current stack, but handle the case where there's no stack for the current branch
+    let current_stack = match state.get_current_stack() {
+        Ok(stack) => stack,
+        Err(_) => {
+            println!("No stack found for the current branch. Run 'zyra init' to create a new stack.");
+            return Ok(());
+        }
+    };
 
     if json {
         println!("{}", current_stack.json(pretty));

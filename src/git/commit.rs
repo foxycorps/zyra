@@ -1,4 +1,4 @@
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 use std::process::Command;
 
 /// get_hash returns the current commit hash.
@@ -20,4 +20,16 @@ pub fn is_commit(commit_hash: &str) -> bool {
         Ok(_) => true,
         Err(_) => false,
     }
+}
+
+/// has_commits_between checks if there are commits between two branches.
+pub fn has_commits_between(base: &str, head: &str) -> Result<bool> {
+    let output = Command::new("git")
+        .arg("rev-list")
+        .arg("--count")
+        .arg(format!("{}..{}", base, head))
+        .output()?;
+
+    let count = String::from_utf8(output.stdout)?.trim().parse::<i32>()?;
+    Ok(count > 0)
 }

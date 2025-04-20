@@ -26,6 +26,10 @@ pub fn prev() -> Result<()> {
         // Switch to the branch first
         git::branch::switch(&prev_branch_name, false)?;
         
+        // Update the commit hash after switching
+        let current_commit = git::commit::get_hash()?;
+        state.update_branch_commit_hash(&prev_branch_name, &current_commit)?;
+        
         // Then update state
         state.clear_detached_head_context();
         state.save()?;
@@ -46,8 +50,16 @@ pub fn prev() -> Result<()> {
     }
 
     let prev_branch = &current_stack.branches[current_idx - 1];
-    git::branch::switch(&prev_branch.name, false)?;
-    println!("Switched to branch '{}'", prev_branch.name.blue());
+    let prev_branch_name = prev_branch.name.clone();
+    
+    git::branch::switch(&prev_branch_name, false)?;
+    
+    // Update the commit hash after switching
+    let current_commit = git::commit::get_hash()?;
+    state.update_branch_commit_hash(&prev_branch_name, &current_commit)?;
+    state.save()?;
+    
+    println!("Switched to branch '{}'", prev_branch_name.blue());
     
     Ok(())
 }

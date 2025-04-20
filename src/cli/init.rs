@@ -1,7 +1,7 @@
 use super::Run;
 use crate::git::*;
 use crate::{app::init, errors};
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 use clap::Parser;
 
 #[derive(Parser, Debug)]

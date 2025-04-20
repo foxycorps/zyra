@@ -1,6 +1,8 @@
 pub mod branch;
+pub mod goto;
 pub mod init;
 pub mod log;
-pub mod prev;
 pub mod next;
-pub mod goto;
+pub mod prev;
+pub mod restack;
+pub mod submit;

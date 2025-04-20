@@ -26,6 +26,10 @@ pub fn next() -> Result<()> {
         // Switch to the branch first
         git::branch::switch(&next_branch_name, false)?;
         
+        // Update the commit hash after switching
+        let current_commit = git::commit::get_hash()?;
+        state.update_branch_commit_hash(&next_branch_name, &current_commit)?;
+        
         // Then update state
         state.clear_detached_head_context();
         state.save()?;
@@ -46,8 +50,16 @@ pub fn next() -> Result<()> {
     }
 
     let next_branch = &current_stack.branches[current_idx + 1];
-    git::branch::switch(&next_branch.name, false)?;
-    println!("Switched to branch '{}'", next_branch.name.blue());
+    let next_branch_name = next_branch.name.clone();
+    
+    git::branch::switch(&next_branch_name, false)?;
+    
+    // Update the commit hash after switching
+    let current_commit = git::commit::get_hash()?;
+    state.update_branch_commit_hash(&next_branch_name, &current_commit)?;
+    state.save()?;
+    
+    println!("Switched to branch '{}'", next_branch_name.blue());
     
     Ok(())
 }
